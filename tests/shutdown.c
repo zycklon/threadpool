@@ -31,7 +31,7 @@ int main(int argc, char **argv)
     left = SIZE;
     pool = threadpool_create(THREAD, SIZE, 0);
     for(i = 0; i < SIZE; i++) {
-        assert(threadpool_add(pool, &dummy_task, NULL, 0) == 0);
+        assert(threadpool_add_task(pool, &dummy_task, NULL, 0) == 0);
     }
     assert(threadpool_destroy(pool, 0) == 0);
     assert(left > 0);
@@ -40,7 +40,7 @@ int main(int argc, char **argv)
     left = SIZE;
     pool = threadpool_create(THREAD, SIZE, 0);
     for(i = 0; i < SIZE; i++) {
-        assert(threadpool_add(pool, &dummy_task, NULL, 0) == 0);
+        assert(threadpool_add_task(pool, &dummy_task, NULL, 0) == 0);
     }
     assert(threadpool_destroy(pool, threadpool_graceful) == 0);
     assert(left == 0);

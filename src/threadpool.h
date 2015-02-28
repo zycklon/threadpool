@@ -36,12 +36,17 @@
 
 typedef struct threadpool_t threadpool_t;
 
+/**
+ * @enum threadpool_error_t
+ * @brief
+ */
+
 typedef enum {
-    threadpool_invalid        = -1,
-    threadpool_lock_failure   = -2,
-    threadpool_queue_full     = -3,
-    threadpool_shutdown       = -4,
-    threadpool_thread_failure = -5
+    threadpool_invalid        = -1, /**< pool is NULL or function is NULL */
+    threadpool_lock_failure   = -2, /**< failed to acquire the pool->lock */
+    threadpool_queue_full     = -3, /**<   */
+    threadpool_shutdown       = -4, /**<   */
+    threadpool_thread_failure = -5  /**<   */
 } threadpool_error_t;
 
 typedef enum {
@@ -59,7 +64,7 @@ typedef enum {
 threadpool_t *threadpool_create(int thread_count, int queue_size, int flags);
 
 /**
- * @function threadpool_add
+ * @function threadpool_add_task
  * @brief add a new task in the queue of a thread pool
  * @param pool     Thread pool to which add the task.
  * @param function Pointer to the function that will perform the task.
@@ -68,7 +73,7 @@ threadpool_t *threadpool_create(int thread_count, int queue_size, int flags);
  * @return 0 if all goes well, negative values in case of error (@see
  * threadpool_error_t for codes).
  */
-int threadpool_add(threadpool_t *pool, void (*routine)(void *),
+int threadpool_add_task(threadpool_t *pool, void (*routine)(void *),
                    void *arg, int flags);
 
 /**
@@ -77,9 +82,10 @@ int threadpool_add(threadpool_t *pool, void (*routine)(void *),
  * @param pool  Thread pool to destroy.
  * @param flags Flags for shutdown
  *
- * Known values for flags are 0 (default) and threadpool_graceful in
- * which case the thread pool doesn't accept any new tasks but
- * processes all pending tasks before shutdown.
+ * Known values for flags are:
+ *     - 0 (default)
+ *     - threadpool_graceful in which case the thread pool doesn't accept
+ *       any new tasks but processes all pending tasks before shutdown.
  */
 int threadpool_destroy(threadpool_t *pool, int flags);
 

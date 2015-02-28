@@ -34,6 +34,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #include "threadpool.h"
 
@@ -59,13 +60,14 @@ typedef struct {
  *  @struct threadpool
  *  @brief The threadpool struct
  *
+ *  @var lock         TODO: description
  *  @var notify       Condition variable to notify worker threads.
  *  @var threads      Array containing worker threads ID.
- *  @var thread_count Number of threads
+ *  @var thread_count Number of threads in this pool
  *  @var queue        Array containing the task queue.
  *  @var queue_size   Size of the task queue.
  *  @var head         Index of the first element.
- *  @var tail         Index of the next element.
+ *  @var tail         Index of the next element. (tail of the queue)
  *  @var count        Number of pending tasks
  *  @var shutdown     Flag indicating if the pool is shutting down
  *  @var started      Number of started threads
@@ -74,8 +76,8 @@ struct threadpool_t {
   pthread_mutex_t lock;
   pthread_cond_t notify;
   pthread_t *threads;
-  threadpool_task_t *queue;
   int thread_count;
+  threadpool_task_t *queue;
   int queue_size;
   int head;
   int tail;
@@ -89,8 +91,13 @@ struct threadpool_t {
  * @brief the worker thread
  * @param threadpool the pool which own the thread
  */
-static void *threadpool_thread(void *threadpool);
+static void *threadpool_worker_thread(void *threadpool);
 
+/**
+ * @function int threadpool_free(threadpool_t *pool)
+ * @brief delete and free the threadpool
+ * @param pool the pool which one wants to delete
+ */
 int threadpool_free(threadpool_t *pool);
 
 threadpool_t *threadpool_create(int thread_count, int queue_size, int flags)
@@ -112,8 +119,7 @@ threadpool_t *threadpool_create(int thread_count, int queue_size, int flags)
 
     /* Allocate thread and task queue */
     pool->threads = (pthread_t *)malloc(sizeof(pthread_t) * thread_count);
-    pool->queue = (threadpool_task_t *)malloc
-        (sizeof(threadpool_task_t) * queue_size);
+    pool->queue = (threadpool_task_t *)malloc (sizeof(threadpool_task_t) * queue_size);
 
     /* Initialize mutex and conditional variable first */
     if((pthread_mutex_init(&(pool->lock), NULL) != 0) ||
@@ -126,7 +132,7 @@ threadpool_t *threadpool_create(int thread_count, int queue_size, int flags)
     /* Start worker threads */
     for(i = 0; i < thread_count; i++) {
         if(pthread_create(&(pool->threads[i]), NULL,
-                          threadpool_thread, (void*)pool) != 0) {
+        		threadpool_worker_thread, (void*)pool) != 0) {
             threadpool_destroy(pool, 0);
             return NULL;
         }
@@ -143,7 +149,7 @@ threadpool_t *threadpool_create(int thread_count, int queue_size, int flags)
     return NULL;
 }
 
-int threadpool_add(threadpool_t *pool, void (*function)(void *),
+int threadpool_add_task(threadpool_t *pool, void (*function)(void *),
                    void *argument, int flags)
 {
     int err = 0;
@@ -251,16 +257,21 @@ int threadpool_free(threadpool_t *pool)
         /* Because we allocate pool->threads after initializing the
            mutex and condition variable, we're sure they're
            initialized. Let's lock the mutex just in case. */
-        pthread_mutex_lock(&(pool->lock));
+
+        /* NOTE: It shall be safe to destroy an initialized mutex that is unlocked.
+         * Attempting to destroy a locked mutex or a mutex that is referenced
+         * by another thread results in undefined behavior.
+         */
+        /* pthread_mutex_lock(&(pool->lock)); */
         pthread_mutex_destroy(&(pool->lock));
         pthread_cond_destroy(&(pool->notify));
     }
-    free(pool);    
+    free(pool);
     return 0;
 }
 
 
-static void *threadpool_thread(void *threadpool)
+static void *threadpool_worker_thread(void *threadpool)
 {
     threadpool_t *pool = (threadpool_t *)threadpool;
     threadpool_task_t task;

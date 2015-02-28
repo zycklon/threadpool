@@ -28,7 +28,7 @@ int main(int argc, char **argv)
     fprintf(stderr, "Pool started with %d threads and "
             "queue size of %d\n", THREAD, QUEUE);
 
-    while(threadpool_add(pool, &dummy_task, NULL, 0) == 0) {
+    while(threadpool_add_task(pool, &dummy_task, NULL, 0) == 0) {
         pthread_mutex_lock(&lock);
         tasks++;
         pthread_mutex_unlock(&lock);
